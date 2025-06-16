@@ -2,7 +2,7 @@ import streamlit as st
 from PIL import Image
 
 # ================== Configuración ==================
-client = st.secrets["ngroqAPIKey"]
+client = Groq(api_key=st.secrets["ngroqAPIKey"])
 modelos = ['llama3-8b-8192', 'llama3-70b-8192']
 temas = ['Atardecer', 'Noche', 'Mar']
 
