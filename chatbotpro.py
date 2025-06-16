@@ -1,10 +1,9 @@
 import streamlit as st
 from PIL import Image
-
-
+import requests  # Usamos requests para interactuar con la API
 
 # ================== Configuración ==================
-client = Groq(api_key=st.secrets["ngroqAPIKey"])
+api_key = st.secrets["ngroqAPIKey"]["api_key"]  # Cargar la clave desde los secretos
 modelos = ['llama3-8b-8192', 'llama3-70b-8192']
 temas = ['Atardecer', 'Noche', 'Mar']
 
@@ -141,17 +140,28 @@ if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
 
     try:
-        chat_completion = client.chat.completions.create(
-            model=parmodelo,
-            messages=st.session_state.messages,
-            stream=True
-        )
-        full_response = ""
-        for chunk in generate_chat_responses(chat_completion):
-            full_response += chunk
-        with st.chat_message("assistant"):
-            st.markdown(full_response)
-        st.session_state.messages.append({"role": "assistant", "content": full_response})
+        # Realiza la solicitud a la API de Groq
+        url = "https://api.groq.ai/endpoint"  # Cambia esta URL según la documentación de la API
+        headers = {"Authorization": f"Bearer {api_key}"}
+        data = {
+            "model": parmodelo,
+            "messages": st.session_state.messages
+        }
+        response = requests.post(url, headers=headers, json=data)
+
+        if response.status_code == 200:
+            result = response.json()
+            full_response = result.get("choices", [{}])[0].get("message", {}).get("content", "Error en la respuesta")
+
+            # Muestra la respuesta del asistente
+            with st.chat_message("assistant"):
+                st.markdown(full_response)
+
+            # Guarda el mensaje en el historial
+            st.session_state.messages.append({"role": "assistant", "content": full_response})
+        else:
+            st.error(f"❌ Error en la API: {response.status_code}, {response.text}")
+
     except Exception as e:
         st.error(f"❌ Error: {e}")
 
