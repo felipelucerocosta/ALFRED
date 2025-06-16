@@ -1,5 +1,7 @@
 import streamlit as st
 from PIL import Image
+from groq import Groq  
+
 
 # ================== Configuración ==================
 client = Groq(api_key=st.secrets["ngroqAPIKey"])
