@@ -3,10 +3,16 @@ from PIL import Image
 import requests  # Usamos requests para interactuar con la API
 
 # ================== Configuración ==================
-api_key = st.secrets["ngroqAPIKey"]["api_key"]  # Cargar la clave desde los secretos
+# API Key de Groq desde los secretos
+api_key = st.secrets["ngroqAPIKey"]["api_key"]
+
+# Modelos disponibles
 modelos = ['llama3-8b-8192', 'llama3-70b-8192']
+
+# Temas visuales para la UI
 temas = ['Atardecer', 'Noche', 'Mar']
 
+# Configuración de la página
 st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
 
 # ================== Aplicar tema personalizado ==================
@@ -33,6 +39,7 @@ def aplicar_tema(tema, font_size):
         input_bg = "#fff2cc"
         input_text = "#7a3e00"
 
+    # Aplicación de los estilos CSS
     st.markdown(f"""
     <style>
         body {{
@@ -88,7 +95,7 @@ def aplicar_tema(tema, font_size):
 # ================== Sidebar ==================
 with st.sidebar:
     st.title("⚙️ Configuración")
-    parmodelo = st.selectbox("Modelo AI:", modelos)
+    parmodelo = st.selectbox("Modelo AI:", modelos)  # Aquí el usuario selecciona el modelo
     tema = st.selectbox("Tema visual:", temas)
     font_size = st.slider("Tamaño de fuente", min_value=12, max_value=24, value=16)
     if st.button("🧹 Limpiar historial"):
