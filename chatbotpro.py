@@ -1,21 +1,10 @@
 import streamlit as st
-from PIL import Image
-import requests  # Usamos requests para interactuar con la API
+import groq #API
 
-# ================== Configuración ==================
-# API Key de Groq desde los secretos
-api_key = st.secrets["ngroqAPIKey"]["api_key"]
 
-# Modelos disponibles
-modelos = ['llama3-8b-8192', 'llama3-70b-8192']
+MODELOS = ['llama3-8b-8192', 'llama3-70b-8192','mixtral-8x7b-32768']
 
-# Temas visuales para la UI
-temas = ['Atardecer', 'Noche', 'Mar']
-
-# Configuración de la página
-st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
-
-# ================== Aplicar tema personalizado ==================
+# CONFIGURAR PAGINA
 def aplicar_tema(tema, font_size):
     if tema == "Noche":
         bg_color = "#0b0c10"
@@ -39,7 +28,6 @@ def aplicar_tema(tema, font_size):
         input_bg = "#fff2cc"
         input_text = "#7a3e00"
 
-    # Aplicación de los estilos CSS
     st.markdown(f"""
     <style>
         body {{
@@ -92,10 +80,17 @@ def aplicar_tema(tema, font_size):
     </style>
     """, unsafe_allow_html=True)
 
-# ================== Sidebar ==================
+
+st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
+
+# CREAR UN CLIENTE GROQ => NOSOTROS
+def crear_cliente_groq():
+    groq_api_key = st.secrets["GROQ_API_KEY"]
+    return groq.Groq(api_key=groq_api_key)
+    
 with st.sidebar:
     st.title("⚙️ Configuración")
-    parmodelo = st.selectbox("Modelo AI:", modelos)  # Aquí el usuario selecciona el modelo
+    parmodelo = st.selectbox("Modelo AI:", modelos)
     tema = st.selectbox("Tema visual:", temas)
     font_size = st.slider("Tamaño de fuente", min_value=12, max_value=24, value=16)
     if st.button("🧹 Limpiar historial"):
@@ -104,75 +99,64 @@ with st.sidebar:
 
 aplicar_tema(tema, font_size)
 
-# ================== Estado ==================
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+#INICIALIZAR EL ESTADO DEL CHAT
+#streamlit => variable especial llamada session_state. {mensajes => []}
+def inicializar_estado_chat():
+    if "mensajes" not in st.session_state:
+        st.session_state.mensajes = [] #lista
+#MOSTRAR MENSAJES REVIOS
 
-# ================== Funciones ==================
-def generate_chat_responses(chat_completion):
-    for chunk in chat_completion:
-        try:
-            content = chunk.choices[0].delta.content
-        except Exception:
-            content = chunk.get('choices', [{}])[0].get('delta', {}).get('content', '')
-        if content:
-            yield content
+def obtener_mensajes_previos():
+    for mensaje in st.session_state.mensajes: # recorrer los mensajes de st.session_state.mensaje
+        with st.chat_message(mensaje["role"]): #quien lo envia ??
+            st.markdown(mensaje["content"]) #que envia?
 
-def export_chat_history():
-    chat_log = ""
-    for msg in st.session_state.messages:
-        role = msg['role'].capitalize()
-        content = msg['content']
-        chat_log += f"{role}:\n{content}\n\n"
-    return chat_log.encode('utf-8')
+#OBTENER MENSAJE USUARIO
+def obtener_mensaje_usuario():
+    return st.chat_input("Envia tu mensaje")
 
-# ================== UI Principal ==================
-st.title("🤖 RoboAlfred")
+#GUARDAR LOS MENSAJES
+def agregar_mensajes_previos(role, content):
+    st.session_state.mensajes.append({"role": role , "content": content})
 
-# Mostrar historial
-for message in st.session_state.messages:
-    role = message["role"]
-    role_class = "role-user" if role == "user" else "role-assistant"
-    st.markdown(f"""
-        <div class="chat-card">
-            <div class="{role_class}">{role.capitalize()}:</div>
-            <div>{message['content'].replace('\n', '<br>')}</div>
-        </div>
-    """, unsafe_allow_html=True)
+#MOSTRAR LOS MENSAJES EN PANTALLA
+def mostrar_mensaje(role, content):
+    with st.chat_message(role):
+        st.markdown(content)
+    
 
-# Entrada del usuario
-prompt = st.chat_input("💬 Escribe tu mensaje...")
+#llamar DEL MODELO DE GROQ
+def obtener_respuesta_modelo(cliente, modelo, mensaje):
+    respuesta = cliente.chat.completions.create(
+        model = modelo,
+        messages = mensaje,
+        stream= False
+    )
+    return respuesta.choices[0].message.content
+    
+    
+    
 
-if prompt:
-    st.session_state.messages.append({"role": "user", "content": prompt})
+def ejecutar_chat():
+    configurar_pagina()
+    cliente = crear_cliente_groq()
+    modelo = mostrar_sidebar()
+    
+    inicializar_estado_chat()
+    mensaje_usuario = obtener_mensaje_usuario()
+    obtener_mensajes_previos()
+    
+    if mensaje_usuario:
+        agregar_mensajes_previos("user",mensaje_usuario)
+        mostrar_mensaje("user",mensaje_usuario)
+    
+        respuesta_contenido = obtener_respuesta_modelo(cliente, modelo,st.session_state.mensajes )
 
-    try:
-        # Realiza la solicitud a la API de Groq
-        url = "https://api.groq.ai/endpoint"  # Cambia esta URL según la documentación de la API
-        headers = {"Authorization": f"Bearer {api_key}"}
-        data = {
-            "model": parmodelo,
-            "messages": st.session_state.messages
-        }
-        response = requests.post(url, headers=headers, json=data)
+        agregar_mensajes_previos("assistant",respuesta_contenido)
+        mostrar_mensaje("assistant",respuesta_contenido)
+    
+    
+# EJECUTAR LA APP( si __name__ es igual a __main__ se ejecuta la funcion, y __main__ es mi archivo principal)
+if __name__ == '__main__':
+    ejecutar_chat()
 
-        if response.status_code == 200:
-            result = response.json()
-            full_response = result.get("choices", [{}])[0].get("message", {}).get("content", "Error en la respuesta")
-
-            # Muestra la respuesta del asistente
-            with st.chat_message("assistant"):
-                st.markdown(full_response)
-
-            # Guarda el mensaje en el historial
-            st.session_state.messages.append({"role": "assistant", "content": full_response})
-        else:
-            st.error(f"❌ Error en la API: {response.status_code}, {response.text}")
-
-    except Exception as e:
-        st.error(f"❌ Error: {e}")
-
-# Botón para descargar historial
-if st.session_state.messages:
-    chat_bytes = export_chat_history()
-    st.download_button("📥 Descargar historial del chat", data=chat_bytes, file_name="chat_history.txt", mime="text/plain")
