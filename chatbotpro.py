@@ -1,11 +1,11 @@
 import streamlit as st
 import groq
 
-# Temas y modelos disponibles
+# ----- TEMAS Y MODELOS DISPONIBLES -----
 temas = ['Atardecer', 'Noche', 'Mar']
 modelos = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768']
 
-# Aplicar tema visual
+# ----- APLICAR ESTILO SEGÚN TEMA -----
 def aplicar_tema(tema, font_size):
     if tema == "Noche":
         bg_color = "#0b0c10"
@@ -75,11 +75,10 @@ def aplicar_tema(tema, font_size):
     </style>
     """, unsafe_allow_html=True)
 
-
-# Configuración de la página
+# ----- CONFIGURACIÓN DE PÁGINA -----
 st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
 
-# Sidebar con configuración
+# ----- SIDEBAR: CONFIGURACIÓN -----
 with st.sidebar:
     st.title("⚙️ Configuración")
     modelo_seleccionado = st.selectbox("Modelo AI:", modelos)
@@ -89,36 +88,33 @@ with st.sidebar:
         st.session_state.mensajes = []
         st.experimental_rerun()
 
+# Aplicar estilo visual
 aplicar_tema(tema_seleccionado, font_size)
 
-# Crear cliente Groq
+# ----- FUNCIONES DE BACKEND -----
+
 def crear_cliente_groq():
     if "GROQ_API_KEY" not in st.secrets:
-        st.error("No se ha definido la API Key de Groq en secrets.")
+        st.error("❌ Falta la clave de API de Groq en `.streamlit/secrets.toml`")
         st.stop()
     return groq.Groq(api_key=st.secrets["GROQ_API_KEY"])
 
-# Inicializar historial si no existe
 def inicializar_estado_chat():
     if "mensajes" not in st.session_state:
         st.session_state.mensajes = []
 
-# Mostrar mensajes anteriores
 def obtener_mensajes_previos():
     for mensaje in st.session_state.mensajes:
         with st.chat_message(mensaje["role"]):
             st.markdown(mensaje["content"])
 
-# Agregar nuevo mensaje
 def agregar_mensaje(role, content):
     st.session_state.mensajes.append({"role": role, "content": content})
 
-# Mostrar un mensaje en pantalla
 def mostrar_mensaje(role, content):
     with st.chat_message(role):
         st.markdown(content)
 
-# Obtener respuesta del modelo
 def obtener_respuesta_modelo(cliente, modelo, mensajes):
     respuesta = cliente.chat.completions.create(
         model=modelo,
@@ -127,12 +123,13 @@ def obtener_respuesta_modelo(cliente, modelo, mensajes):
     )
     return respuesta.choices[0].message.content
 
-# Función principal
+# ----- FUNCIÓN PRINCIPAL -----
+
 def ejecutar_chat():
     cliente = crear_cliente_groq()
     inicializar_estado_chat()
     obtener_mensajes_previos()
-    
+
     mensaje_usuario = st.chat_input("Envia tu mensaje")
     if mensaje_usuario:
         agregar_mensaje("user", mensaje_usuario)
@@ -142,6 +139,6 @@ def ejecutar_chat():
         agregar_mensaje("assistant", respuesta)
         mostrar_mensaje("assistant", respuesta)
 
-# Ejecutar app
+# ----- EJECUTAR APP -----
 if __name__ == '__main__':
     ejecutar_chat()
