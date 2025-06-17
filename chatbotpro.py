@@ -1,11 +1,24 @@
 import streamlit as st
+import groq
 
-
-# ----- TEMAS Y MODELOS DISPONIBLES -----
+# ----- CONFIGURACIONES DISPONIBLES -----
 temas = ['Atardecer', 'Noche', 'Mar']
 modelos = ['llama3-8b-8192', 'llama3-70b-8192', 'mixtral-8x7b-32768']
 
-# ----- APLICAR ESTILO SEGÚN TEMA -----
+# ----- CONFIGURAR PÁGINA -----
+st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
+
+# ----- SIDEBAR -----
+with st.sidebar:
+    st.title("⚙️ Configuración")
+    modelo_seleccionado = st.selectbox("Modelo AI:", modelos)
+    tema_seleccionado = st.selectbox("Tema visual:", temas)
+    font_size = st.slider("Tamaño de fuente", 12, 24, 16)
+    if st.button("🧹 Limpiar historial"):
+        st.session_state.mensajes = []
+        st.experimental_rerun()
+
+# ----- APLICAR TEMA VISUAL -----
 def aplicar_tema(tema, font_size):
     if tema == "Noche":
         bg_color = "#0b0c10"
@@ -42,31 +55,16 @@ def aplicar_tema(tema, font_size):
             padding: 1rem;
             margin-bottom: 1rem;
             border-radius: 10px;
-            word-wrap: break-word;
-        }}
-        .role-user {{
-            font-weight: 700;
-            margin-bottom: 5px;
-        }}
-        .role-assistant {{
-            font-style: italic;
-            margin-bottom: 5px;
         }}
         .stButton>button {{
             background-color: {border_color} !important;
             color: white !important;
             border-radius: 8px !important;
         }}
-        .css-1d391kg,
-        .css-1v3fvcr,
-        textarea,
-        input {{
+        textarea, input {{
             background-color: {input_bg} !important;
             color: {input_text} !important;
             border-radius: 8px !important;
-        }}
-        .css-1v3fvcr {{
-            padding: 10px !important;
         }}
         .main {{
             background-color: {bg_color};
@@ -75,27 +73,13 @@ def aplicar_tema(tema, font_size):
     </style>
     """, unsafe_allow_html=True)
 
-# ----- CONFIGURACIÓN DE PÁGINA -----
-st.set_page_config(page_title="RoboAlfred", page_icon="🤖", layout="wide")
-
-# ----- SIDEBAR: CONFIGURACIÓN -----
-with st.sidebar:
-    st.title("⚙️ Configuración")
-    modelo_seleccionado = st.selectbox("Modelo AI:", modelos)
-    tema_seleccionado = st.selectbox("Tema visual:", temas)
-    font_size = st.slider("Tamaño de fuente", min_value=12, max_value=24, value=16)
-    if st.button("🧹 Limpiar historial"):
-        st.session_state.mensajes = []
-        st.experimental_rerun()
-
-# Aplicar estilo visual
 aplicar_tema(tema_seleccionado, font_size)
 
-# ----- FUNCIONES DE BACKEND -----
+# ----- FUNCIONES -----
 
 def crear_cliente_groq():
     if "GROQ_API_KEY" not in st.secrets:
-        st.error("❌ Falta la clave de API de Groq en `.streamlit/secrets.toml`")
+        st.error("❌ Falta GROQ_API_KEY en .streamlit/secrets.toml")
         st.stop()
     return groq.Groq(api_key=st.secrets["GROQ_API_KEY"])
 
@@ -115,6 +99,7 @@ def mostrar_mensaje(role, content):
     with st.chat_message(role):
         st.markdown(content)
 
+# ✅ ESTA ES LA FUNCIÓN QUE PROVOCABA EL ERROR, DEBE IR ANTES DE USARSE
 def obtener_respuesta_modelo(cliente, modelo, mensajes):
     respuesta = cliente.chat.completions.create(
         model=modelo,
@@ -123,8 +108,7 @@ def obtener_respuesta_modelo(cliente, modelo, mensajes):
     )
     return respuesta.choices[0].message.content
 
-# ----- FUNCIÓN PRINCIPAL -----
-
+# ----- EJECUCIÓN PRINCIPAL -----
 def ejecutar_chat():
     cliente = crear_cliente_groq()
     inicializar_estado_chat()
@@ -139,6 +123,7 @@ def ejecutar_chat():
         agregar_mensaje("assistant", respuesta)
         mostrar_mensaje("assistant", respuesta)
 
-# ----- EJECUTAR APP -----
+# ----- INICIO DE LA APP -----
 if __name__ == '__main__':
     ejecutar_chat()
+
