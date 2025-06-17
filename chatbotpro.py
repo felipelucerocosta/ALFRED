@@ -2,7 +2,7 @@ import streamlit as st
 
 
 
-MODELOS = ['llama3-8b-8192', 'llama3-70b-8192','mixtral-8x7b-32768']
+modelos = ['llama3-8b-8192', 'llama3-70b-8192','mixtral-8x7b-32768']
 
 # CONFIGURAR PAGINA
 def aplicar_tema(tema, font_size):
